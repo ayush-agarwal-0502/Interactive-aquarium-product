@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaPlay — Interactive Aquarium Concept</title>
+<style>
+:root{--ink:#eaf8ff;--muted:#9bb7c8;--aqua:#61e7d4;--edge:#28546b;--panel:#0c2639}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:radial-gradient(ellipse at 50% -10%,#17445b 0,#081c2d 55%,#04111d 100%);font-family:Inter,system-ui,Segoe UI,sans-serif;color:var(--ink)}
+.wrap{max-width:1200px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px}
+.brand{display:flex;gap:12px;align-items:center}.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#75f1dc,#2989ac);color:#062536;font-size:25px;font-weight:900;box-shadow:0 0 26px #56e5d255}
+h1{font-size:21px;letter-spacing:.16em;margin:0}.tag{font-size:11px;color:var(--muted);margin-top:3px}.live{font-size:10px;letter-spacing:.13em;border:1px solid #34728a;border-radius:30px;padding:9px 13px;color:#9af3e4;background:#0b2a3c}
+.shell{background:linear-gradient(180deg,#0c2b40,#081d2d);border:1px solid #28566e;border-radius:24px;padding:15px;box-shadow:0 24px 70px #0008}
+.tank-label{display:flex;justify-content:space-between;color:#9bb9c9;font-size:10px;letter-spacing:.14em;padding:3px 5px 11px}
+canvas{width:100%;height:auto;display:block;aspect-ratio:1.85/1;border-radius:14px;background:#07344b;border:2px solid #6ed5e466}
+.console{margin-top:13px;border:1px solid #28566e;border-radius:18px;background:linear-gradient(180deg,#102f44,#091f30);padding:14px 16px 13px}
+.console-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.console-head strong{font-size:11px;letter-spacing:.16em;color:#a8c5d4}.console-head span{font-size:10px;color:#78a0b5}
+.controls{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+button{font:inherit;cursor:pointer}
+.action{border:1px solid #32647a;border-radius:13px;padding:11px 9px;background:#12364b;color:var(--ink);text-align:left;min-height:70px;transition:.18s}
+.action:hover{border-color:var(--aqua);background:#17465b;transform:translateY(-2px)}
+.action.active{border-color:#68ecd9;box-shadow:inset 0 0 0 1px #68ecd9;background:#17465b}
+.action b{display:block;font-size:12px}.action small{display:block;font-size:10px;color:#a6c1ce;margin-top:5px;line-height:1.3}
+.symbol{font-size:17px;color:#70ead8;margin-right:5px}
+.below{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:11px;color:#83a5b8;font-size:10px}
+.status{color:#b9f5e9}
+.tip{font-size:10px;color:#7899ac;text-align:center;margin:13px 0 0}
+@media(max-width:800px){body{padding:12px}.controls{grid-template-columns:repeat(2,minmax(0,1fr))}.live{display:none}.below{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+ <div class="brand"><div class="logo">≈</div><div><h1>AQUAPLAY</h1><div class="tag">An interactive aquarium experience</div></div></div>
+ <div class="live">● LIVE CONCEPT SIMULATION</div>
+</header>
+<div class="shell">
+ <div class="tank-label"><span>FRESHWATER INTERACTIVE HABITAT</span><span id="sceneName">WALL DISPLAY · CORAL REEF</span></div>
+ <canvas id="tank" width="1200" height="650"></canvas>
+ <div class="console">
+  <div class="console-head"><strong>THE AQUAPLAY CONTROL DECK</strong><span>Choose an experience</span></div>
+  <div class="controls">
+   <button class="action" id="maze"><b><span class="symbol">↔</span>Move maze</b><small>Shift the underwater walls</small></button>
+   <button class="action" id="wallLeft"><b><span class="symbol">◀</span>Wall left</b><small>Move selected wall left</small></button>
+   <button class="action" id="wallRight"><b><span class="symbol">▶</span>Wall right</b><small>Move selected wall right</small></button>
+   <button class="action" id="scene"><b><span class="symbol">▣</span>Change screen</b><small>Switch the aquarium backdrop</small></button>
+   <button class="action" id="holo"><b><span class="symbol">✧</span>Octopus hologram</b><small>Toggle the corner illusion</small></button>
+  </div>
+  <div class="below"><span>SELECTED PARTITION: <b id="selected">CENTRE GATE</b></span><span class="status" id="status">Coral reef scene · Fish exploring freely</span></div>
+ </div>
+</div>
+<div class="tip">Concept demonstration only · Moving walls, display screens and hologram are simulated, not connected to real aquarium hardware.</div>
+</div>
+<script>
+const c=document.getElementById('tank'),g=c.getContext('2d'),W=1200,H=650;
+let scene=0,holo=true,selected=1,mazeSet=0;
+const scenes=[
+ {name:'CORAL REEF',sky:'#087e9d',deep:'#06415b',sand:'#b7a77c',plants:'#239c83',type:'coral'},
+ {name:'VOLCANIC LAGOON',sky:'#31516b',deep:'#101f37',sand:'#665c57',plants:'#a65a38',type:'volcano'},
+ {name:'KELP FOREST',sky:'#176b72',deep:'#073c43',sand:'#887e59',plants:'#247f58',type:'kelp'},
+ {name:'LOST UNDERWATER CITY',sky:'#315c88',deep:'#102c50',sand:'#9c947d',plants:'#3e987f',type:'ruins'}
+];
+let walls=[
+ {x:300,y:300,h:205,dir:1,label:'LEFT GATE'},
+ {x:565,y:245,h:255,dir:-1,label:'CENTRE GATE'},
+ {x:835,y:305,h:205,dir:1,label:'RIGHT GATE'}
+];
+const fish=[
+ {x:140,y:235,vx:1.55,vy:.5,s:1.1,col:'#ffb44e',phase:0},
+ {x:520,y:395,vx:-1.2,vy:-.35,s:.83,col:'#f5f4e8',phase:2},
+ {x:930,y:220,vx:.95,vy:.55,s:.75,col:'#ff766d',phase:4},
+ {x:735,y:450,vx:-.8,vy:-.3,s:.65,col:'#ffe17a',phase:1.3}
+];
+let bubbles=Array.from({length:48},()=>({x:Math.random()*W,y:Math.random()*H,r:2+Math.random()*4,v:.35+Math.random()*.9}));
+function rr(x,y,w,h,r,fill,stroke){g.beginPath();g.roundRect(x,y,w,h,r);g.fillStyle=fill;g.fill();if(stroke){g.strokeStyle=stroke;g.lineWidth=2;g.stroke();}}
+function fishDraw(f,t){
+ g.save();g.translate(f.x,f.y);g.rotate(Math.atan2(f.vy,f.vx));g.scale(f.s,f.s);
+ g.fillStyle=f.col;g.beginPath();g.ellipse(0,0,31,18,0,0,Math.PI*2);g.fill();
+ g.beginPath();g.moveTo(-25,0);g.lineTo(-51,-17+Math.sin(t/150+f.phase)*4);g.lineTo(-51,17+Math.sin(t/150+f.phase)*4);g.closePath();g.fill();
+ g.fillStyle='#ffffff88';g.beginPath();g.moveTo(-2,-4);g.lineTo(8,-22);g.lineTo(16,-4);g.fill();
+ g.fillStyle='#122c3b';g.beginPath();g.arc(19,-4,2.7,0,Math.PI*2);g.fill();g.restore();
+}
+function plant(x,y,h,color,seed){
+ g.strokeStyle=color;g.lineWidth=7;g.lineCap='round';
+ for(let j=0;j<4;j++){g.beginPath();g.moveTo(x+j*5,y);g.quadraticCurveTo(x-20+j*11,y-h*.55,x-10+j*13+Math.sin(seed+j)*10,y-h);g.stroke();}
+}
+function backdrop(t,s){
+ let grad=g.createLinearGradient(0,0,0,H);grad.addColorStop(0,s.sky);grad.addColorStop(1,s.deep);g.fillStyle=grad;g.fillRect(0,0,W,H);
+ // underwater screen: a large inset display occupying rear wall
+ rr(120,65,960,300,18,'#061a2b','#7fd9e766');
+ g.save();g.beginPath();g.roundRect(130,75,940,280,12);g.clip();
+ let bg=g.createLinearGradient(0,75,0,355);bg.addColorStop(0,s.sky);bg.addColorStop(1,s.deep);g.fillStyle=bg;g.fillRect(130,75,940,280);
+ // rays on screen
+ g.globalAlpha=.15;for(let i=0;i<8;i++){g.fillStyle='#e6ffff';g.beginPath();g.moveTo(170+i*120,75);g.lineTo(220+i*120,75);g.lineTo(330+i*100,355);g.lineTo(270+i*100,355);g.fill();}g.globalAlpha=1;
+ if(s.type==='coral'){
+  for(let i=0;i<12;i++){let x=160+i*82,y=350;g.strokeStyle=['#ff8e78','#e7a4dc','#ffcc75','#67d6c1'][i%4];g.lineWidth=10;g.lineCap='round';g.beginPath();g.moveTo(x,y);g.lineTo(x,y-50-(i%3)*15);g.moveTo(x,y-24);g.lineTo(x-18,y-43);g.moveTo(x,y-34);g.lineTo(x+18,y-52);g.stroke();}
+  for(let i=0;i<22;i++){g.fillStyle=['#ffd16a','#8df0d7','#ff9b91'][i%3];g.beginPath();g.arc(180+(i*41)%850,125+(i*67)%180,3+(i%3),0,Math.PI*2);g.fill();}
+ }else if(s.type==='volcano'){
+  g.fillStyle='#252b39';g.beginPath();g.moveTo(450,355);g.lineTo(610,125);g.lineTo(770,355);g.fill();g.fillStyle='#ff7848';g.beginPath();g.ellipse(610,145,47,12,0,0,Math.PI*2);g.fill();
+  for(let i=0;i<18;i++){g.fillStyle='#ffb45b';g.globalAlpha=.35+Math.random()*.45;g.beginPath();g.arc(560+Math.random()*100,90+Math.random()*65,2+Math.random()*5,0,Math.PI*2);g.fill();}g.globalAlpha=1;
+  g.fillStyle='#f18b4d';g.globalAlpha=.5;g.fillRect(130,330,940,25);g.globalAlpha=1;
+ }else if(s.type==='kelp'){
+  for(let i=0;i<15;i++){let x=160+i*64;g.strokeStyle='#58c58a';g.lineWidth=11;g.beginPath();g.moveTo(x,355);for(let y=355;y>95;y-=25)g.lineTo(x+Math.sin(y/45+i)*18,y);g.stroke();}
+ }else{
+  g.strokeStyle='#b4c9c4';g.lineWidth=17;for(let i=0;i<5;i++){let x=230+i*175;g.beginPath();g.moveTo(x,355);g.lineTo(x,180);g.stroke();g.beginPath();g.arc(x,180,48,Math.PI,0);g.stroke();}
+  g.fillStyle='#d4c9a1';g.fillRect(130,340,940,15);
+ }
+ g.restore();
+ // foreground seabed
+ g.fillStyle=s.sand;g.fillRect(0,555,W,95);
+ for(let i=0;i<14;i++)plant(25+i*88,560,70+(i%4)*20,s.plants,i);
+ // aquarium glass edges
+ g.strokeStyle='#d7faff66';g.lineWidth=5;g.strokeRect(4,4,W-8,H-8);
+}
+function drawMaze(){
+ // maze gates are independent, draggable-looking transparent acrylic barriers
+ walls.forEach((w,i)=>{
+  g.save();g.shadowColor=i===selected?'#a4fff3':'#64cce5';g.shadowBlur=16;
+  let grad=g.createLinearGradient(w.x,0,w.x+24,0);grad.addColorStop(0,'#d5ffffbb');grad.addColorStop(.5,'#62d8ed88');grad.addColorStop(1,'#1a779b99');
+  rr(w.x,w.y,24,w.h,10,grad,i===selected?'#d5fff8':'#a5eaff99');
+  g.restore();
+  g.fillStyle='#c7faff';g.font='12px system-ui';g.textAlign='center';g.fillText(i===selected?'SELECTED':`GATE ${i+1}`,w.x+12,w.y-12);
+ });
+ // short cross walls create a maze-like path, not just parallel bars
+ const offsets=[-60,35,90];
+ offsets.forEach((o,i)=>{
+  let x=walls[i].x+20, y=walls[i].y+(i%2?80:115);
+  g.save();g.shadowColor='#6bdcf0';g.shadowBlur=12;
+  rr(x,y,125,17,8,'#63cde788','#c7faff99');g.restore();
+ });
+}
+function drawOctopus(t){
+ if(!holo)return;
+ g.save();g.translate(1010,430);g.shadowColor='#b9a4ff';g.shadowBlur=25;
+ // hologram prism at corner
+ g.strokeStyle='#c8f5ff99';g.lineWidth=3;g.beginPath();g.moveTo(-95,-140);g.lineTo(95,-140);g.lineTo(0,15);g.closePath();g.stroke();
+ // octopus head
+ let pulse=Math.sin(t/350)*4;
+ let grad=g.createRadialGradient(-8,-75,5,0,-70,54);grad.addColorStop(0,'#f2d5ff');grad.addColorStop(.5,'#ba83ff');grad.addColorStop(1,'#6c4bd9');
+ g.fillStyle=grad;g.beginPath();g.ellipse(0,-75+pulse,43,37,0,0,Math.PI*2);g.fill();
+ g.fillStyle='#25134b';g.beginPath();g.arc(-14,-79,4,0,Math.PI*2);g.arc(14,-79,4,0,Math.PI*2);g.fill();
+ g.strokeStyle='#c6a5ff';g.lineWidth=12;g.lineCap='round';
+ for(let i=0;i<8;i++){let a=(i/7)*Math.PI;let sx=Math.cos(a)*28,sy=-48;g.beginPath();g.moveTo(sx,sy);g.bezierCurveTo(sx+Math.sin(t/400+i)*22,sy+35,sx+(i-3.5)*18,sy+45,sx+(i-3.5)*24+Math.sin(t/300+i)*10,sy+88);g.stroke();}
+ g.fillStyle='#e8d8ff';g.font='12px system-ui';g.textAlign='center';g.fillText('PEPPER’S GHOST',0,125);g.restore();
+}
+function animate(t){
+ const s=scenes[scene];g.clearRect(0,0,W,H);backdrop(t,s);
+ // bubbles
+ bubbles.forEach(b=>{b.y-=b.v;if(b.y<60){b.y=H-20;b.x=Math.random()*W}g.strokeStyle='#d9fbff77';g.lineWidth=1.5;g.beginPath();g.arc(b.x,b.y,b.r,0,Math.PI*2);g.stroke();});
+ drawMaze();
+ fish.forEach(f=>{
+  f.x+=f.vx;f.y+=f.vy+Math.sin(t/500+f.phase)*.35;
+  if(f.x<55||f.x>1145)f.vx*=-1;if(f.y<105||f.y>525)f.vy*=-1;
+  if(Math.random()<.002){f.vx+=(Math.random()-.5)*.25;f.vy+=(Math.random()-.5)*.16;}
+  fishDraw(f,t);
+ });
+ drawOctopus(t);
+ g.fillStyle='#eaffff';g.font='bold 14px system-ui';g.textAlign='left';g.fillText('AQUAPLAY · INTERACTIVE HABITAT',25,32);
+ requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+function say(t){document.getElementById('status').textContent=t;}
+function updateSelected(){document.getElementById('selected').textContent=walls[selected].label;}
+document.getElementById('maze').onclick=()=>{
+ mazeSet++;walls.forEach((w,i)=>{w.x=[260,550,840][i]+(mazeSet%3-1)*[35,-25,25][i];w.y=[275,225,300][i]+(mazeSet%2)*[25,-20,15][i];});
+ say('Maze layout changed · New exploration route');};
+document.getElementById('wallLeft').onclick=()=>{walls[selected].x=Math.max(90,walls[selected].x-28);say(walls[selected].label+' moved left');};
+document.getElementById('wallRight').onclick=()=>{walls[selected].x=Math.min(1080,walls[selected].x+28);say(walls[selected].label+' moved right');};
+document.getElementById('scene').onclick=()=>{scene=(scene+1)%scenes.length;document.getElementById('sceneName').textContent='WALL DISPLAY · '+scenes[scene].name;say('Wall screen changed to '+scenes[scene].name.toLowerCase());};
+document.getElementById('holo').onclick=()=>{holo=!holo;document.getElementById('holo').classList.toggle('active',holo);say(holo?'Octopus hologram enabled':'Octopus hologram hidden');};
+c.addEventListener('pointerdown',e=>{
+ const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W,y=(e.clientY-r.top)/r.height*H;
+ let nearest=0,dist=Infinity;walls.forEach((w,i)=>{let d=Math.abs(x-(w.x+12));if(y>w.y-20&&y<w.y+w.h+20&&d<dist){dist=d;nearest=i;}});
+ if(dist<65){selected=nearest;updateSelected();say(walls[selected].label+' selected · Use Wall left / Wall right');}
+});
+updateSelected();
+</script>
+</body>
+</html>
