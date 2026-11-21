@@ -2,9 +2,12 @@
 
 ## Today's Product Innovation Journey – Project PetPals 2026 - Prodlab IIMI's Product Freshers competition 
 
+<img width="1027" height="797" alt="image" src="https://github.com/user-attachments/assets/bdf182f0-0102-4a25-90b7-2a971d078ccf" />
+(photo for explanation purpose only, please use the html file from the code section to get interactive experience of this application)
+
 ## 1. The competition
 
-Participated in Product Freshers' 2026, under Project PetPals. The challenge was to identify an underserved problem in the pet-care ecosystem and propose an innovative product. We were assigned fish as the pet. 
+Participated in Product Freshers' 2026, under Project PetPals. The challenge was to identify an underserved problem in the pet-care ecosystem and propose an innovative product. We were assigned fish as the pet. All this work from ideation to deck creation, and prototype creation was done under 45 minutes !! Personally, I enjoyed working on this product idea. 
 
 Teammates - Ayush Agarwal, Riya Jha
 
